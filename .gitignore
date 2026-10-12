@@ -1,0 +1,12 @@
+node_modules
+dist
+.DS_Store
+.env
+server/api/config.php
+server/data/*.sqlite
+server/data/*.sqlite-*
+server/data/*.log
+server/data/uploads/*
+!server/data/uploads/.gitkeep
+*.tsbuildinfo
+dev-dist

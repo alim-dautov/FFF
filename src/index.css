@@ -1,0 +1,113 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: "Manrope", sans-serif;
+  --color-paper: var(--bg);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-lime: var(--lime);
+  --color-lime-deep: var(--lime-deep);
+  --color-orange: var(--orange);
+  --color-soft: var(--soft);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-ai: var(--ai);
+  --color-ai-soft: var(--ai-soft);
+  --color-graphite: #171a16;
+  --radius-control: 10px;
+  --radius-panel: 14px;
+  --radius-card: 18px;
+  --shadow-card: 0 1px 2px rgb(23 26 22 / 0.04), 0 10px 24px rgb(23 26 22 / 0.04);
+}
+
+:root {
+  --bg: #f5f6f2;
+  --card: #ffffff;
+  --ink: #1c2118;
+  --muted: #667061;
+  --line: #e4e7df;
+  --lime: #6eae3c;
+  --lime-deep: #3d8c1c;
+  --orange: #c47a2c;
+  --soft: #eef6e3;
+  --danger: #c2413a;
+  --info: #3c6ea5;
+  --info-soft: #e7f0f8;
+  --ai: #6b5bb8;
+  --ai-soft: #f1eefb;
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --bg: #10130f;
+  --card: #191d16;
+  --ink: #f3f5ef;
+  --muted: #a7b0a2;
+  --line: #2c3328;
+  --lime: #8ed14f;
+  --lime-deep: #b6e784;
+  --orange: #e0a15a;
+  --soft: #1d2918;
+  --danger: #f0a39a;
+  --info: #9ec0e6;
+  --info-soft: #1a2836;
+  --ai: #c4b6f5;
+  --ai-soft: #241f33;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { min-height: 100%; }
+body {
+  margin: 0;
+  font-family: Manrope, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+::selection { background: color-mix(in srgb, var(--lime) 35%, transparent); }
+
+.num { font-variant-numeric: tabular-nums; }
+.scroll-thin { scrollbar-width: thin; }
+.safe-top { padding-top: env(safe-area-inset-top); }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+
+.data-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--card);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--muted);
+}
+.data-table tbody tr { transition: background-color 140ms ease; }
+.data-table tbody tr:hover { background: color-mix(in srgb, var(--soft) 72%, transparent); }
+.data-table .num { font-variant-numeric: tabular-nums; }
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.rise { animation: rise .28s ease both; }
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes pop {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.modal-backdrop { animation: fade-in .16s ease; }
+.modal-panel { animation: pop .18s ease; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rise, .modal-backdrop, .modal-panel { animation: none; }
+}
