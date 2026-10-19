@@ -13,8 +13,16 @@ final class CrmService
         'ending_today', 'overdue', 'paused', 'lost', 'vip',
     ];
 
+    public static function customerScope(array $actor, string $alias = 'c'): array
+    {
+        return self::scope($actor, $alias);
+    }
+
     public static function listCustomers(Db $db, array $actor, array $query): array
     {
+        if (($query['view'] ?? '') === 'nutrition') {
+            return NutritionService::list($db, $actor, $query);
+        }
         actor_require($actor, 'customers.view');
         $filter = (string) ($query['filter'] ?? 'all');
         if (!in_array($filter, self::FILTERS, true)) {
@@ -118,12 +126,14 @@ final class CrmService
         $paid = array_values(array_filter($payments, fn ($p) => $p['status'] === 'paid'));
         $sum = array_sum(array_map(fn ($p) => (int) $p['amount'], $paid));
         $current = $subs[0] ?? null;
+        $rations = NutritionService::forCustomer($db, $id);
         return [
             'customer' => $customer,
             'manager' => $manager,
             'address' => $address,
             'schedule' => $schedule,
             'subscriptions' => $subs,
+            'rations' => $rations,
             'current' => $current,
             'payments' => $payments,
             'deliveries' => $deliveries,
@@ -151,8 +161,8 @@ final class CrmService
             throw new HttpError(422, 'Укажите имя и телефон в формате +7');
         }
         $id = $db->insert(
-            'INSERT INTO customers (full_name, phone, phone_digits, whatsapp, status, vip, manager_id, source, city, district, comment, first_contact_at, registered_at, created_at)
-             VALUES (:name, :phone, :digits, :whatsapp, :status, :vip, :manager, :source, :city, :district, :comment, :contact, :registered, :created)',
+            'INSERT INTO customers (full_name, phone, phone_digits, whatsapp, status, vip, manager_id, source, city, district, comment, first_contact_at, registered_at, created_at, name_key)
+             VALUES (:name, :phone, :digits, :whatsapp, :status, :vip, :manager, :source, :city, :district, :comment, :contact, :registered, :created, :name_key)',
             [
                 'name' => $name,
                 'phone' => $phone,
@@ -168,6 +178,7 @@ final class CrmService
                 'contact' => app_today(),
                 'registered' => app_today(),
                 'created' => app_now(),
+                'name_key' => name_key($name),
             ],
         );
         self::saveAddress($db, $id, $input['address'] ?? [
@@ -189,6 +200,9 @@ final class CrmService
             if (array_key_exists($field, $input)) {
                 $fields[$field] = $input[$field] === '' ? null : $input[$field];
             }
+        }
+        if (array_key_exists('full_name', $fields) && $fields['full_name'] !== null) {
+            $fields['name_key'] = name_key((string) $fields['full_name']);
         }
         if (array_key_exists('vip', $input)) {
             $fields['vip'] = !empty($input['vip']) ? 1 : 0;
@@ -476,8 +490,8 @@ final class CrmService
         }
         $today = app_today();
         $customerId = $db->insert(
-            'INSERT INTO customers (full_name, phone, phone_digits, whatsapp, status, vip, manager_id, source, city, district, comment, first_contact_at, first_payment_at, last_payment_at, last_contact_at, registered_at, created_at)
-             VALUES (:name, :phone, :digits, :whatsapp, :status, 0, :manager, :source, :city, :district, :comment, :c1, :c2, :c3, :c4, :c5, :created)',
+            'INSERT INTO customers (full_name, phone, phone_digits, whatsapp, status, vip, manager_id, source, city, district, comment, first_contact_at, first_payment_at, last_payment_at, last_contact_at, registered_at, created_at, name_key)
+             VALUES (:name, :phone, :digits, :whatsapp, :status, 0, :manager, :source, :city, :district, :comment, :c1, :c2, :c3, :c4, :c5, :created, :name_key)',
             [
                 'name' => $lead['name'],
                 'phone' => $lead['phone'],
@@ -495,6 +509,7 @@ final class CrmService
                 'c4' => $today,
                 'c5' => $today,
                 'created' => app_now(),
+                'name_key' => name_key((string) $lead['name']),
             ],
         );
         self::saveAddress($db, $customerId, ['city' => 'Алматы', 'district' => '', 'street' => '', 'building' => '']);

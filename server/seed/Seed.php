@@ -39,6 +39,7 @@ final class Seed
             'customers.view' => 'Клиенты',
             'customers.manage' => 'Изменение клиентов',
             'customers.view_all' => 'Все клиенты',
+            'customers.import' => 'Импорт клиентов',
             'subscriptions.view' => 'Подписки',
             'subscriptions.manage' => 'Изменение подписок',
             'payments.view' => 'Оплаты',
@@ -68,6 +69,11 @@ final class Seed
         ];
         $permIds = [];
         foreach ($perms as $code => $name) {
+            $existing = $db->one('SELECT id FROM permissions WHERE code = :code', ['code' => $code]);
+            if ($existing) {
+                $permIds[$code] = (int) $existing['id'];
+                continue;
+            }
             $permIds[$code] = $db->insert('INSERT INTO permissions (code, name) VALUES (:code, :name)', ['code' => $code, 'name' => $name]);
         }
         $all = array_keys($perms);
@@ -215,11 +221,12 @@ final class Seed
             $phone = self::phone(200 + $i);
             $manager = $managers[$i % 3];
             $registered = $i >= 27 ? app_date_shift(app_today(), -($i - 26)) : app_date_shift(app_today(), -40 - $i);
+            $fullName = $first[$i] . ' ' . $last[$i];
             $customerId = $db->insert(
-                'INSERT INTO customers (full_name, phone, phone_digits, whatsapp, status, vip, manager_id, source, city, district, comment, first_contact_at, first_payment_at, last_payment_at, last_contact_at, next_action, next_action_at, registered_at, created_at)
-                 VALUES (:name, :phone, :digits, :whatsapp, :status, :vip, :manager, :source, :city, :district, :comment, :first, :first_pay, :last_pay, :contact, :action, :next, :registered, :created)',
+                'INSERT INTO customers (full_name, phone, phone_digits, whatsapp, status, vip, manager_id, source, city, district, comment, first_contact_at, first_payment_at, last_payment_at, last_contact_at, next_action, next_action_at, registered_at, created_at, name_key)
+                 VALUES (:name, :phone, :digits, :whatsapp, :status, :vip, :manager, :source, :city, :district, :comment, :first, :first_pay, :last_pay, :contact, :action, :next, :registered, :created, :name_key)',
                 [
-                    'name' => $first[$i] . ' ' . $last[$i],
+                    'name' => $fullName,
                     'phone' => $phone,
                     'digits' => phone_digits($phone),
                     'whatsapp' => $phone,
@@ -238,6 +245,7 @@ final class Seed
                     'next' => app_today(),
                     'registered' => $registered,
                     'created' => $registered . ' 10:00:00',
+                    'name_key' => name_key($fullName),
                 ],
             );
             $addressId = $db->insert(

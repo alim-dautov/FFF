@@ -6,14 +6,180 @@ final class Schema
     public static function install(Db $db): void
     {
         $db->pdo->exec('CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY)');
-        $row = $db->one('SELECT version FROM schema_migrations WHERE version = 1');
-        if ($row) {
+        $v1 = $db->one('SELECT version FROM schema_migrations WHERE version = 1');
+        if (!$v1) {
+            foreach (self::statements($db->driver) as $sql) {
+                $db->pdo->exec($sql);
+            }
+            $db->insert('INSERT INTO schema_migrations (version) VALUES (1)');
+        }
+        $v2 = $db->one('SELECT version FROM schema_migrations WHERE version = 2');
+        if (!$v2) {
+            self::migrateV2($db);
+            $db->insert('INSERT INTO schema_migrations (version) VALUES (2)');
+        }
+        self::backfillNameKeys($db);
+    }
+
+    public static function backfillNameKeys(Db $db): void
+    {
+        if (!self::hasColumn($db, 'customers', 'name_key')) {
             return;
         }
-        foreach (self::statements($db->driver) as $sql) {
-            $db->pdo->exec($sql);
+        $rows = $db->all('SELECT id, full_name FROM customers WHERE name_key IS NULL OR name_key = \'\'');
+        foreach ($rows as $row) {
+            $db->exec('UPDATE customers SET name_key = :key WHERE id = :id', [
+                'key' => name_key((string) $row['full_name']),
+                'id' => $row['id'],
+            ]);
         }
-        $db->insert('INSERT INTO schema_migrations (version) VALUES (1)');
+    }
+
+    public static function migrateV2(Db $db): void
+    {
+        $driver = $db->driver;
+        self::addColumnIfMissing($db, 'customers', 'name_key', $driver === 'mysql' ? 'VARCHAR(190) NULL' : 'TEXT NULL');
+        self::ensureIndex($db, 'customers', 'idx_customers_name_key', ['name_key']);
+
+        $db->pdo->exec(self::createTable($driver, 'client_subscriptions', [
+            'cols' => [
+                'id' => 'pk',
+                'customer_id' => 'int',
+                'full_name' => 'string:160',
+                'line' => 'string:32',
+                'section' => 'string:120 null',
+                'tariff_days' => 'int null',
+                'pack_days' => 'string:64 null',
+                'kcal' => 'string:80 null',
+                'ration_no' => 'string:64 null',
+                'diet' => 'string:120 null',
+                'delivery_time' => 'string:16 null',
+                'period_start' => 'date null',
+                'period_end' => 'date null',
+                'end_date' => 'date null',
+                'pauses' => 'text null',
+                'status' => 'string:16',
+                'tariff_days_ref' => 'int null',
+                'flag_mark' => 'string:5 null',
+                'notes' => 'text null',
+                'source_row' => 'int null',
+                'source_text' => 'text null',
+                'needs_review' => 'bool',
+                'review_reasons' => 'text null',
+                'import_batch_id' => 'int null',
+                'created_at' => 'datetime',
+                'updated_at' => 'datetime',
+            ],
+            'fks' => ['customer_id' => 'customers.id CASCADE'],
+            'index' => [['customer_id'], ['status'], ['line'], ['end_date'], ['import_batch_id'], ['needs_review']],
+        ]));
+        foreach ([['customer_id'], ['status'], ['line'], ['end_date'], ['import_batch_id'], ['needs_review']] as $cols) {
+            $idx = 'idx_client_subscriptions_' . implode('_', $cols);
+            self::ensureIndex($db, 'client_subscriptions', $idx, $cols);
+        }
+
+        $db->pdo->exec(self::createTable($driver, 'import_batches', [
+            'cols' => [
+                'id' => 'pk',
+                'user_id' => 'int null',
+                'filename' => 'string:255',
+                'stored_path' => 'string:255 null',
+                'status' => 'string:32',
+                'total_rows' => 'int',
+                'created_customers' => 'int',
+                'created_subscriptions' => 'int',
+                'updated_rows' => 'int',
+                'skipped_rows' => 'int',
+                'error_rows' => 'int',
+                'report_json' => 'text null',
+                'created_at' => 'datetime',
+                'rolled_back_at' => 'datetime null',
+            ],
+            'fks' => ['user_id' => 'users.id SET NULL'],
+        ]));
+
+        $db->pdo->exec(self::createTable($driver, 'import_changes', [
+            'cols' => [
+                'id' => 'pk',
+                'batch_id' => 'int',
+                'entity_type' => 'string:40',
+                'entity_id' => 'int',
+                'action' => 'string:32',
+                'before_json' => 'text null',
+                'created_at' => 'datetime',
+            ],
+            'fks' => ['batch_id' => 'import_batches.id CASCADE'],
+            'index' => [['batch_id']],
+        ]));
+        self::ensureIndex($db, 'import_changes', 'idx_import_changes_batch_id', ['batch_id']);
+
+        $customers = $db->all('SELECT id, full_name FROM customers');
+        foreach ($customers as $row) {
+            $key = name_key((string) $row['full_name']);
+            $db->exec('UPDATE customers SET name_key = :key WHERE id = :id', ['key' => $key, 'id' => $row['id']]);
+        }
+
+        self::ensurePermission($db, 'customers.import', 'Импорт клиентов');
+        foreach (['admin', 'super_admin'] as $roleCode) {
+            $role = $db->one('SELECT id FROM roles WHERE code = :code', ['code' => $roleCode]);
+            $perm = $db->one('SELECT id FROM permissions WHERE code = :code', ['code' => 'customers.import']);
+            if ($role && $perm) {
+                $exists = $db->one(
+                    'SELECT role_id FROM role_permissions WHERE role_id = :role AND permission_id = :perm',
+                    ['role' => $role['id'], 'perm' => $perm['id']],
+                );
+                if (!$exists) {
+                    $db->insert(
+                        'INSERT INTO role_permissions (role_id, permission_id) VALUES (:role, :perm)',
+                        ['role' => $role['id'], 'perm' => $perm['id']],
+                    );
+                }
+            }
+        }
+    }
+
+    private static function ensurePermission(Db $db, string $code, string $name): void
+    {
+        $row = $db->one('SELECT id FROM permissions WHERE code = :code', ['code' => $code]);
+        if (!$row) {
+            $db->insert('INSERT INTO permissions (code, name) VALUES (:code, :name)', ['code' => $code, 'name' => $name]);
+        }
+    }
+
+    private static function addColumnIfMissing(Db $db, string $table, string $column, string $ddl): void
+    {
+        if (self::hasColumn($db, $table, $column)) {
+            return;
+        }
+        $q = self::qid($db->driver, $table);
+        $db->pdo->exec('ALTER TABLE ' . $q . ' ADD COLUMN ' . self::qid($db->driver, $column) . ' ' . $ddl);
+    }
+
+    private static function hasColumn(Db $db, string $table, string $column): bool
+    {
+        if ($db->driver === 'mysql') {
+            $row = $db->one(
+                'SELECT COLUMN_NAME AS c FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :t AND COLUMN_NAME = :c',
+                ['t' => $table, 'c' => $column],
+            );
+            return (bool) $row;
+        }
+        $cols = $db->all('PRAGMA table_info(' . self::qid('sqlite', $table) . ')');
+        foreach ($cols as $col) {
+            if (($col['name'] ?? '') === $column) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static function ensureIndex(Db $db, string $table, string $name, array $cols): void
+    {
+        $quoted = array_map(fn (string $c) => self::qid($db->driver, $c), $cols);
+        $sql = 'CREATE INDEX IF NOT EXISTS ' . self::qid($db->driver, $name)
+            . ' ON ' . self::qid($db->driver, $table) . ' (' . implode(', ', $quoted) . ')';
+        $db->pdo->exec($sql);
     }
 
     public static function statements(string $driver): array
@@ -398,7 +564,7 @@ final class Schema
             $parts[] = 'FOREIGN KEY (' . self::qid($driver, $col) . ') REFERENCES ' . self::qid($driver, $table)
                 . ' (' . self::qid($driver, $field) . ') ON DELETE ' . $action;
         }
-        $sql = 'CREATE TABLE ' . self::qid($driver, $name) . ' (' . implode(', ', $parts) . ')';
+        $sql = 'CREATE TABLE IF NOT EXISTS ' . self::qid($driver, $name) . ' (' . implode(', ', $parts) . ')';
         if ($driver === 'mysql') {
             $sql .= ' ENGINE=InnoDB DEFAULT CHARSET=utf8mb4';
         }

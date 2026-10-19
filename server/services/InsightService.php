@@ -50,6 +50,7 @@ final class InsightService
             ],
             'attention' => self::attention($db, $actor),
             'focus' => self::focus($db, $actor),
+            'nutrition' => NutritionService::dashboardStats($db, $actor),
         ];
     }
 

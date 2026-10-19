@@ -8,5 +8,8 @@ server/data/*.sqlite-*
 server/data/*.log
 server/data/uploads/*
 !server/data/uploads/.gitkeep
+server/data/imports/*
+!server/data/imports/.gitkeep
+backups/
 *.tsbuildinfo
 dev-dist

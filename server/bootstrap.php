@@ -12,6 +12,8 @@ require_once __DIR__ . '/services/CommService.php';
 require_once __DIR__ . '/services/AutomationService.php';
 require_once __DIR__ . '/services/BillingService.php';
 require_once __DIR__ . '/services/CrmService.php';
+require_once __DIR__ . '/services/NutritionService.php';
+require_once __DIR__ . '/services/ClientImportService.php';
 require_once __DIR__ . '/services/OpsService.php';
 require_once __DIR__ . '/services/PeopleService.php';
 require_once __DIR__ . '/services/InsightService.php';

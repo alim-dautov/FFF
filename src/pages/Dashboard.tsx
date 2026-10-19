@@ -9,6 +9,13 @@ type Dash = {
   kpis: Record<string, number | null>
   attention: Array<{ title: string; subtitle: string; href: string; tone: string }>
   focus: Array<{ label: string; value: number; href: string }>
+  nutrition?: {
+    lines: Record<string, number>
+    tariffs: Record<string, number>
+    ending_7: number
+    paused: number
+    active_total: number
+  }
 }
 
 const kpiMeta: Array<[string, string]> = [
@@ -88,6 +95,22 @@ export function DashboardPage() {
                 </section>
               )
             })}
+            {data.nutrition && (
+              <section>
+                <h2 className="mb-3 text-xs font-semibold tracking-wide text-muted uppercase">Питание · активные подписки</h2>
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <StatCard label="Премиум" value={data.nutrition.lines['Премиум'] ?? 0} tone="info" icon={<Users size={15} strokeWidth={1.75} />} onClick={() => navigate('/customers?view=nutrition&line=%D0%9F%D1%80%D0%B5%D0%BC%D0%B8%D1%83%D0%BC&status=active')} />
+                  <StatCard label="Стандарт" value={data.nutrition.lines['Стандарт'] ?? 0} tone="neutral" icon={<Users size={15} strokeWidth={1.75} />} onClick={() => navigate('/customers?view=nutrition&line=%D0%A1%D1%82%D0%B0%D0%BD%D0%B4%D0%B0%D1%80%D1%82&status=active')} />
+                  <StatCard label="Заканчиваются ≤ 7 дней" value={data.nutrition.ending_7} tone="orange" icon={<AlertTriangle size={15} strokeWidth={1.75} />} onClick={() => navigate('/customers?view=nutrition&ending_3=1&status=active')} />
+                  <StatCard label="На паузе" value={data.nutrition.paused} tone="danger" icon={<AlertTriangle size={15} strokeWidth={1.75} />} onClick={() => navigate('/customers?view=nutrition&status=paused')} />
+                </div>
+                <div className="mt-3 grid gap-3 grid-cols-2 sm:grid-cols-4">
+                  {[7, 6, 5, 4].map((d) => (
+                    <StatCard key={d} label={`${d} дней`} value={data.nutrition?.tariffs[String(d)] ?? 0} tone="lime" onClick={() => navigate(`/customers?view=nutrition&tariff=${d}&status=active`)} />
+                  ))}
+                </div>
+              </section>
+            )}
             <div className="grid gap-4 xl:grid-cols-[1.2fr_.8fr]">
               <Card>
                 <h2 className="text-base font-semibold">Сегодня требуют внимания</h2>

@@ -10,6 +10,7 @@ const nav = [
   { to: '/', label: 'Главная', icon: LayoutDashboard, perm: 'dashboard.view', end: true },
   { to: '/pipeline', label: 'Воронка продаж', icon: ClipboardList, perm: 'leads.view' },
   { to: '/customers', label: 'Клиенты', icon: Users, perm: 'customers.view', badge: 'customers' },
+  { to: '/customers/import', label: 'Импорт', icon: Package, perm: 'customers.import' },
   { to: '/subscriptions', label: 'Подписки', icon: Repeat, perm: 'subscriptions.view', badge: 'renewals' },
   { to: '/deliveries', label: 'Доставки', icon: Truck, perm: 'deliveries.view' },
   { to: '/orders', label: 'Заказы', icon: ClipboardList, perm: 'payments.view' },

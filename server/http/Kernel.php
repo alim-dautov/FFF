@@ -102,6 +102,15 @@ final class Kernel
         if ($method === 'GET' && $path === '/customers') return CrmService::listCustomers($db, $actor, $query);
         if ($method === 'POST' && $path === '/customers') return CrmService::createCustomer($db, $actor, $body);
         if ($method === 'POST' && $path === '/customers/bulk') return CrmService::bulk($db, $config, $actor, $body);
+        if ($method === 'POST' && $path === '/imports/clients/upload') return ClientImportService::upload($db, $actor, $_FILES['file'] ?? []);
+        if ($method === 'POST' && $path === '/imports/clients/preview') return ClientImportService::preview($db, $actor, $body);
+        if ($method === 'POST' && $path === '/imports/clients/commit') return ClientImportService::commit($db, $actor, $body);
+        if ($method === 'GET' && preg_match('#^/imports/clients/(\d+)$#', $path, $m)) return ClientImportService::getBatch($db, $actor, (int) $m[1]);
+        if ($method === 'POST' && preg_match('#^/imports/clients/(\d+)/rollback$#', $path, $m)) return ClientImportService::rollback($db, $actor, (int) $m[1]);
+        if ($method === 'POST' && preg_match('#^/customers/(\d+)/rations$#', $path, $m)) return NutritionService::create($db, $actor, (int) $m[1], $body);
+        if ($method === 'PATCH' && preg_match('#^/customers/(\d+)/rations/(\d+)$#', $path, $m)) {
+            return NutritionService::update($db, $actor, (int) $m[1], (int) $m[2], $body);
+        }
         if ($method === 'GET' && preg_match('#^/customers/(\d+)$#', $path, $m)) return CrmService::getCustomer($db, $actor, (int) $m[1]);
         if ($method === 'PATCH' && preg_match('#^/customers/(\d+)$#', $path, $m)) return CrmService::updateCustomer($db, $actor, (int) $m[1], $body);
         if ($method === 'POST' && preg_match('#^/customers/(\d+)/discount$#', $path, $m)) return CrmService::discount($db, $actor, (int) $m[1], $body);

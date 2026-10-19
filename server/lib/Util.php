@@ -27,6 +27,14 @@ function days_left(?string $end, ?string $today = null): ?int
     return (int) $a->diff($b)->format('%r%a');
 }
 
+function name_key(string $name): string
+{
+    $name = mb_strtolower(trim($name), 'UTF-8');
+    $name = str_replace(['ё', 'Ё'], ['е', 'е'], $name);
+    $name = preg_replace('/[^\p{L}\p{N}]+/u', '', $name) ?? '';
+    return $name;
+}
+
 function phone_digits(string $phone): string
 {
     $digits = preg_replace('/\D+/', '', $phone) ?? '';

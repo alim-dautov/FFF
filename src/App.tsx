@@ -6,6 +6,7 @@ import { DashboardPage } from './pages/Dashboard'
 import { PipelinePage } from './pages/Pipeline'
 import { CustomersPage } from './pages/Customers'
 import { CustomerCardPage } from './pages/CustomerCard'
+import { ImportClientsPage } from './pages/ImportClients'
 import { DeliveriesPage, InventoryPage, OrdersPage, ProgramsPage, SubscriptionsPage } from './pages/Operations'
 import { AnalyticsPage, AuditPage, EmployeesPage, FinancePage, NotificationsPage, PayPage, SettingsPage, WhatsAppPage } from './pages/More'
 import { Skeleton } from './components/ui'
@@ -26,6 +27,7 @@ export function App() {
         <Route path="/" element={<DashboardPage />} />
         <Route path="/pipeline" element={<PipelinePage />} />
         <Route path="/customers" element={<CustomersPage />} />
+        <Route path="/customers/import" element={<ImportClientsPage />} />
         <Route path="/customers/:id" element={<CustomerCardPage />} />
         <Route path="/subscriptions" element={<SubscriptionsPage />} />
         <Route path="/deliveries" element={<DeliveriesPage />} />
